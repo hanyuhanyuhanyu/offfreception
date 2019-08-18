@@ -3,20 +3,35 @@
     <div>
       <input v-model="input" ref="inp" autofocus>
     </div>
-    <div>
-      <span v-if="showMessage">
-        {{message}}
-      </span>
+    <div v-if="showMessage">
+      {{message}}
     </div>
+    <UserInfo 
+      v-if="messaging"
+      v-bind="setting"
+      :setting="setting"
+      @toggle="toggle"
+    />
   </div>
 </template>
 
 <script>
-import Logo from '~/components/Logo.vue'
+import UserInfo from "~/components/user_info.vue"
+import Received from "~/components/users/received.vue"
+import Alien from "~/components/users/alien.vue"
+import Notyet from "~/components/users/notyet.vue"
+import Fortoday from "~/components/users/fortoday.vue"
+const port = 3000
+const baseUrl = `http://localhost:${port}`
+const enterInitial = {func: "init", args: []}
 
 export default {
   components: {
-    Logo
+    UserInfo,
+    Received,
+    Alien,
+    Notyet,
+    Fortoday,
   },
   data() {
     return {
@@ -25,6 +40,14 @@ export default {
       showMessage: false,
       messaging: false,
       message: "",
+      user: {},
+      enter: enterInitial,
+      setting: {
+        user: {},
+        componentType: "",
+        firstDay: false,
+        secondDay: false,
+      },
     }
   },
   mounted() {
@@ -35,12 +58,14 @@ export default {
         func(e)
       }
     })
-    this.$refs.inp.addEventListener('focusout', () => {
+    const letItFocus = () => {
       if(this.messaging){
         return
       }
       this.$refs.inp.focus()
-    })
+    }
+    this.$refs.inp.addEventListener('focusout', letItFocus)
+    this.$refs.inp.addEventListener('mousedown', letItFocus)
     this.$refs.inp.addEventListener('focusin', () => {
       if(this.messaging){
         this.$refs.inp.blur()
@@ -51,13 +76,12 @@ export default {
     focus(){
       this.$refs.inp.focus()
     },
-    Space(e){
+    async Space(e){
       if(this.messaging){
         return
       }
       //入力を探しに行く
-      console.log(this.input)
-      const lastResult = this.search(this.input.trim())
+      const lastResult = await this.search(this.input.trim())
       if(!lastResult) {
         //ダメなら初期化処理
         this.init()
@@ -67,10 +91,25 @@ export default {
       }
       this.messaging = true
       this.$refs.inp.blur()
-      this[lastResult.func]()
+      this.setting.componentType = lastResult.func
+      this[lastResult.func](...(lastResult.args))
       //未承認
       //承認済み
       //現生払え
+    },
+    Digit1(){
+      this.setting.firstDay = !this.setting.firstDay
+    },
+    Digit2(){
+      this.setting.secondDay = !this.setting.secondDay
+    },
+    async Enter(e){
+      if(!e.ctrlKey){
+        await this.Space(e)
+        return
+      }
+      console.log("enter accepted")
+      await this[this.enter.func](...this.enter.args)
     },
     Escape(){
       this.init()
@@ -80,31 +119,61 @@ export default {
       this.showMessage = false
       this.message = ""
       this.input = ""
+      this.enter = enterInitial
+      this.setting.firstDay = false
+      this.setting.secondDay = false
       this.focus()
     },
-    search(input){
-      switch(input){
-        case "notyet":
-          return {func: "notyet"}
-        case "received":
-          return {func: "received"}
-        case "abroad":
-          return {func: "abroad"}
+    async search(input){
+      const data = await this.$axios.$get(baseUrl + "/fetch/" + input)
+      if(!data){
+        return false
       }
-      return false
-    },
-    notyet(){
+      this.setting.user = data
       this.showMessage = true
+      const ret = {func: "notyet", args: [data]}
+      if(data.accepted){
+        ret.func = "received"
+      } else if(data.forToday){
+        ret.func = "fortoday"
+      } else if(data.abroad){
+        ret.func = "abroad"
+      }
+      return ret
+    },
+    notyet(data){
       this.message = "まだ受け付けていません"
+      this.enter.func = "markAsAccepted"
+      this.enter.args = [data]
     },
     received(){
-      this.showMessage = true
       this.message = "既に受付済みです"
     },
-    abroad(){
-      this.showMessage = true
+    abroad(data){
       this.message = "海外の方です"
+      this.enter.func = "markAsAccepted"
+      this.enter.args = [data]
     },
+    fortoday(data){
+      this.message = "当日登録です"
+      this.enter.func = "checkForNewReception"
+      this.enter.args = [data]
+    },
+    checkForNewReception(data){
+      const {firstDay, secondDay} = this.setting
+      const price = firstDay * 1500 + secondDay * 3500
+      this.message = `当日受付料は${price}`
+      this.enter.func = "markAsAccepted"
+      this.enter.args = [data, {attendFirstDay: firstDay, attendSecondDay: secondDay}]
+    },
+    async markAsAccepted(data, params = {}){
+      console.log(baseUrl + "/accept/ + data.id", params)
+      const {isError} = await this.$axios.$post(baseUrl + "/accept/" + data.id, params)
+      console.log(isError)
+    },
+    toggle(target){
+      this.setting[target] = !this.setting[target]
+    }
   },
 }
 </script>

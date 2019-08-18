@@ -15,6 +15,10 @@ module.exports = {
       { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }
     ]
   },
+  serverMiddleware: [
+    {path: "/fetch", handler: "~/api/fetchData.js"},
+    {path: "/accept", handler: "~/api/accept.js"},
+  ],
   /*
   ** Customize the progress-bar color
   */
@@ -38,6 +42,7 @@ module.exports = {
   ** Nuxt.js modules
   */
   modules: [
+    "@nuxtjs/axios",
   ],
   /*
   ** Build configuration
