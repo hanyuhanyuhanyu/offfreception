@@ -1,3 +1,4 @@
+const serveStatic=require("serve-static")
 
 module.exports = {
   mode: 'spa',
@@ -18,6 +19,7 @@ module.exports = {
   serverMiddleware: [
     {path: "/fetch", handler: "~/api/fetchData.js"},
     {path: "/accept", handler: "~/api/accept.js"},
+    {path: "/static", handler: serveStatic(__dirname + "/static") },
   ],
   /*
   ** Customize the progress-bar color
@@ -53,5 +55,5 @@ module.exports = {
     */
     extend (config, ctx) {
     }
-  }
+  },
 }

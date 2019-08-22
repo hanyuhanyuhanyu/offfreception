@@ -3,6 +3,7 @@
     <div>
       <input v-model="input" ref="inp" autofocus>
     </div>
+    <UserLogo></UserLogo>
     <div v-if="showMessage">
       {{message}}
     </div>
@@ -16,6 +17,7 @@
 </template>
 
 <script>
+import UserLogo from "~/components/user_logo.vue"
 import UserInfo from "~/components/user_info.vue"
 import Received from "~/components/users/received.vue"
 import Alien from "~/components/users/alien.vue"
@@ -27,6 +29,7 @@ const enterInitial = {func: "init", args: []}
 
 export default {
   components: {
+    UserLogo,
     UserInfo,
     Received,
     Alien,
