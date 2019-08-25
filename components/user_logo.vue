@@ -1,14 +1,14 @@
 <template>
   <div>
     <div class="outer">
-    <img src="/static/accepted.svg" class="accepted">
-      <div class="first">
+    <img src="/static/accepted.svg" class="accepted" v-if="accepted">
+      <div class="first" v-if="attendFirstDay">
         1
       </div>
-      <div class="second">
+      <div class="second" v-if="attendSecondDay">
         2
       </div>
-      <div class="abroad">
+      <div class="abroad" v-if="abroad">
         海外
       </div>
       <div class="name">

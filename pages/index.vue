@@ -3,22 +3,18 @@
     <div>
       <input v-model="input" ref="inp" autofocus>
     </div>
-    <UserLogo></UserLogo>
-    <div v-if="showMessage">
-      {{message}}
-    </div>
-    <UserInfo 
-      v-if="messaging"
-      v-bind="setting"
-      :setting="setting"
-      @toggle="toggle"
+    <transition name="fade">
+      <UserLogo v-if="lastResult" v-bind="lastResult" />
+    </transition>
+    <Operation
+      v-bind="labelForKeys"
     />
   </div>
 </template>
 
 <script>
 import UserLogo from "~/components/user_logo.vue"
-import UserInfo from "~/components/user_info.vue"
+import Operation from "~/components/operation.vue"
 import Received from "~/components/users/received.vue"
 import Alien from "~/components/users/alien.vue"
 import Notyet from "~/components/users/notyet.vue"
@@ -30,7 +26,7 @@ const enterInitial = {func: "init", args: []}
 export default {
   components: {
     UserLogo,
-    UserInfo,
+    Operation,
     Received,
     Alien,
     Notyet,
@@ -51,12 +47,17 @@ export default {
         firstDay: false,
         secondDay: false,
       },
+      lastResult: null,
+      labelForKeys: {
+        "whenEnter": null,
+        "whenSpace": null,
+        "whenEscape": "リセット"
+      },
     }
   },
   mounted() {
     document.addEventListener("keyup", e => {
       const func = this[e.code]
-      console.log(e.code)
       if(typeof func === "function"){
         func(e)
       }
@@ -85,6 +86,7 @@ export default {
       }
       //入力を探しに行く
       const lastResult = await this.search(this.input.trim())
+      this.lastResult = lastResult.args[0]
       if(!lastResult) {
         //ダメなら初期化処理
         this.init()
@@ -125,6 +127,12 @@ export default {
       this.enter = enterInitial
       this.setting.firstDay = false
       this.setting.secondDay = false
+      this.lastResult = null
+      this.labelForKeys = {
+        "whenEnter": null,
+        "whenSpace": null,
+        "whenEscape": "リセット"
+      }
       this.focus()
     },
     async search(input){
@@ -145,34 +153,53 @@ export default {
       return ret
     },
     notyet(data){
-      this.message = "まだ受け付けていません"
       this.enter.func = "markAsAccepted"
       this.enter.args = [data]
+      this.labelForKeys = {
+        "whenEnter": "受け付ける",
+        "whenSpace": null,
+        "whenEscape": "最初の画面へ"
+      }
     },
     received(){
-      this.message = "既に受付済みです"
+      this.labelForKeys = {
+        "whenEnter": null,
+        "whenSpace": null,
+        "whenEscape": "最初の画面へ"
+      }
     },
     abroad(data){
-      this.message = "海外の方です"
       this.enter.func = "markAsAccepted"
       this.enter.args = [data]
+      this.labelForKeys = {
+        "whenEnter": "受け付ける",
+        "whenSpace": null,
+        "whenEscape": "最初の画面へ"
+      }
     },
     fortoday(data){
-      this.message = "当日登録です"
       this.enter.func = "checkForNewReception"
       this.enter.args = [data]
+      this.labelForKeys = {
+        "whenEnter": "確認画面へ",
+        "whenSpace": null,
+        "whenEscape": "最初の画面へ"
+      }
     },
     checkForNewReception(data){
       const {firstDay, secondDay} = this.setting
       const price = firstDay * 1500 + secondDay * 3500
-      this.message = `当日受付料は${price}`
       this.enter.func = "markAsAccepted"
       this.enter.args = [data, {attendFirstDay: firstDay, attendSecondDay: secondDay}]
+      this.labelForKeys = {
+        "whenEnter": "金額が正しいことを確認して受け付ける",
+        "whenSpace": null,
+        "whenEscape": "最初の画面へ"
+      }
     },
     async markAsAccepted(data, params = {}){
-      console.log(baseUrl + "/accept/ + data.id", params)
       const {isError} = await this.$axios.$post(baseUrl + "/accept/" + data.id, params)
-      console.log(isError)
+      this.lastResult = null
     },
     toggle(target){
       this.setting[target] = !this.setting[target]
@@ -218,5 +245,11 @@ export default {
 
 .links {
   padding-top: 15px;
+}
+.fade-enter-active, .fade-leave-active{
+  transition: opacity .2s;
+}
+.fade-enter, .fade-leave-to{
+  opacity: 0;
 }
 </style>
