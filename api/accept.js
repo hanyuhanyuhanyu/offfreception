@@ -6,6 +6,7 @@ module.exports = async (req, res, next) => {
   req.body.id = requested
   const params = {}
   let columns = ""
+  console.log(req.body)
   Object.keys(req.body).forEach(k => {
     params[`$${k}`] = req.body[k]
     if(k === "id"){
@@ -13,6 +14,7 @@ module.exports = async (req, res, next) => {
     }
     columns += ("," + k + "=$" + k)
   })
+  console.log(`update users set accepted=true ${columns} where id=$id`)
   db.get(`update users set accepted=true ${columns} where id=$id`, params, (err) => {
     if(err){
       res.send({isError: true})

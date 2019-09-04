@@ -1,13 +1,18 @@
 <template>
   <div class="container fill vertical">
     <div>
-      <input v-model="input" ref="inp" autofocus>
+      <input :style="inputStyle" v-model="input" ref="inp" autofocus>
     </div>
+      <PaymentInfo
+        v-if="needPay"
+        :price="payment"
+      />
     <transition name="fade">
       <UserLogo v-if="lastResult" v-bind="lastResult" />
     </transition>
     <Operation
       v-bind="labelForKeys"
+      @keyPushEmulation="keyPushEmulation($event)"
     />
   </div>
 </template>
@@ -19,6 +24,7 @@ import Received from "~/components/users/received.vue"
 import Alien from "~/components/users/alien.vue"
 import Notyet from "~/components/users/notyet.vue"
 import Fortoday from "~/components/users/fortoday.vue"
+import PaymentInfo from "~/components/payment.vue"
 const port = 3000
 const baseUrl = `http://localhost:${port}`
 const enterInitial = {func: "init", args: []}
@@ -31,6 +37,7 @@ export default {
     Alien,
     Notyet,
     Fortoday,
+    PaymentInfo,
   },
   data() {
     return {
@@ -42,21 +49,24 @@ export default {
       user: {},
       enter: enterInitial,
       setting: {
-        user: {},
+        user: null,
         componentType: "",
         firstDay: false,
         secondDay: false,
       },
-      lastResult: null,
+      lastResult: false,
+      locked: false,
       labelForKeys: {
         "whenEnter": null,
         "whenSpace": null,
         "whenEscape": "リセット"
       },
+      enterJobs: [],
     }
   },
   mounted() {
     document.addEventListener("keyup", e => {
+      console.log(e.code)
       const func = this[e.code]
       if(typeof func === "function"){
         func(e)
@@ -77,6 +87,9 @@ export default {
     })
   },
   methods: {
+    keyPushEmulation(ev){
+      alert(ev)
+    },
     focus(){
       this.$refs.inp.focus()
     },
@@ -103,37 +116,67 @@ export default {
       //現生払え
     },
     Digit1(){
-      this.setting.firstDay = !this.setting.firstDay
+      if(this.setting.user && !this.locked){
+        this.setting.user.attendFirstDay = !this.setting.user.attendFirstDay
+      }
     },
     Digit2(){
-      this.setting.secondDay = !this.setting.secondDay
+      if(this.setting.user && !this.locked){
+        this.setting.user.attendSecondDay = !this.setting.user.attendSecondDay
+      }
     },
     async Enter(e){
       if(!e.ctrlKey){
-        await this.Space(e)
+        if(this.messaging){
+          return
+        }
+        //入力を探しに行く
+        const lastResult = await this.search(this.input.trim())
+        this.lastResult = lastResult.args[0]
+        if(!lastResult) {
+          //ダメなら初期化処理
+          this.init()
+          this.showMessage = true
+          this.message = "与えられた入力に一致するものがありませんでした"
+          return
+        }
+        this.messaging = true
+        this.$refs.inp.blur()
+        this.setting.componentType = lastResult.func
+        this[lastResult.func](...(lastResult.args))
+        //未承認
+        //承認済み
+        //現生払え
         return
       }
       console.log("enter accepted")
-      await this[this.enter.func](...this.enter.args)
+      this[this.enter.func](...this.enter.args)
     },
     Escape(){
       this.init()
     },
+    state(){
+    },
     init(){
+      this.locked=false
       this.messaging = false 
       this.showMessage = false
       this.message = ""
       this.input = ""
       this.enter = enterInitial
-      this.setting.firstDay = false
-      this.setting.secondDay = false
-      this.lastResult = null
+      this.setting = {
+        user: null,
+        componentType: "",
+        firstDay: false,
+        secondDay: false,
+      }
+      this.lastResult = false
       this.labelForKeys = {
         "whenEnter": null,
         "whenSpace": null,
         "whenEscape": "リセット"
       }
-      this.focus()
+      this.$nextTick(() => this.focus())
     },
     async search(input){
       const data = await this.$axios.$get(baseUrl + "/fetch/" + input)
@@ -181,16 +224,21 @@ export default {
       this.enter.func = "checkForNewReception"
       this.enter.args = [data]
       this.labelForKeys = {
+        "when1": "1日目参加の切り替え",
+        "when2": "2日目参加の切り替え",
         "whenEnter": "確認画面へ",
         "whenSpace": null,
         "whenEscape": "最初の画面へ"
       }
     },
     checkForNewReception(data){
-      const {firstDay, secondDay} = this.setting
-      const price = firstDay * 1500 + secondDay * 3500
+      if(this.payment < 1){
+        return
+      }
+      const {attendFirstDay, attendSecondDay} = this.setting.user
+      this.locked =  true
       this.enter.func = "markAsAccepted"
-      this.enter.args = [data, {attendFirstDay: firstDay, attendSecondDay: secondDay}]
+      this.enter.args = [this.setting.user, {attendFirstDay, attendSecondDay}]
       this.labelForKeys = {
         "whenEnter": "金額が正しいことを確認して受け付ける",
         "whenSpace": null,
@@ -199,10 +247,35 @@ export default {
     },
     async markAsAccepted(data, params = {}){
       const {isError} = await this.$axios.$post(baseUrl + "/accept/" + data.id, params)
-      this.lastResult = null
+      this.lastResult = false
+      this.init()
     },
     toggle(target){
       this.setting[target] = !this.setting[target]
+    }
+  },
+  computed: {
+    needPay: function(){
+      if(!this.lastResult){
+        return false
+      }
+      return this.lastResult.abroad || this.lastResult.forToday
+    },
+    payment: function(){
+      if(!this.setting.user){
+        return 0
+      }
+      if(this.setting.user.forToday){
+        return this.setting.user.attendFirstDay * 1500 + this.lastResult.attendSecondDay * 3500
+      }
+      return this.setting.user.attendFirstDay * 1000 + this.lastResult.attendSecondDay * 3000
+    },
+    inputStyle: function(){
+      let display = 'inline-block'
+      if(this.lastResult){
+        display='none'
+      }
+      return {display}
     }
   },
 }
