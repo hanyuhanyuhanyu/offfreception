@@ -89,3 +89,7 @@ sw.*
 
 # Vim swap files
 *.swp
+thisdays*
+/thisdays
+*.sql
+*.db

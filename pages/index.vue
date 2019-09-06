@@ -30,6 +30,7 @@ import Notyet from "~/components/users/notyet.vue"
 import Fortoday from "~/components/users/fortoday.vue"
 import PaymentInfo from "~/components/payment.vue"
 import AcceptedList from "~/components/accepted_list.vue"
+import axios from "~/plugins/axios.js"
 const port = 3000
 const baseUrl = `http://localhost:${port}`
 const enterInitial = {func: "init", args: []}
@@ -95,7 +96,7 @@ export default {
   },
   methods: {
     keyPushEmulation(ev){
-      (this[ev.code] || (() => 0))()
+      (this[ev.code] || (() => 0))(ev)
     },
     focus(){
       this.$refs.inp.focus()
@@ -186,7 +187,7 @@ export default {
       this.$nextTick(() => this.focus())
     },
     async search(input){
-      const data = await this.$axios.$get(baseUrl + "/fetch/" + input)
+      const {data} = await axios.get("/fetch/" + input)
       if(!data){
         return false
       }
@@ -253,7 +254,7 @@ export default {
       }
     },
     async markAsAccepted(data, params = {}){
-      const {isError} = await this.$axios.$post(baseUrl + "/accept/" + data.id, params)
+      const {isError} = await axios.post("/accept/" + data.id, params)
       this.acceptedList.push(this.setting.user)
       if(this.acceptedList.length > 20){
         this.acceptedList.splice(20)
