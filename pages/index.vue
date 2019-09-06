@@ -7,6 +7,10 @@
         v-if="needPay"
         :price="payment"
       />
+      <AcceptedList 
+        class="accepted-list"
+        :list="acceptedList"
+      />
     <transition name="fade">
       <UserLogo v-if="lastResult" v-bind="lastResult" />
     </transition>
@@ -25,6 +29,7 @@ import Alien from "~/components/users/alien.vue"
 import Notyet from "~/components/users/notyet.vue"
 import Fortoday from "~/components/users/fortoday.vue"
 import PaymentInfo from "~/components/payment.vue"
+import AcceptedList from "~/components/accepted_list.vue"
 const port = 3000
 const baseUrl = `http://localhost:${port}`
 const enterInitial = {func: "init", args: []}
@@ -38,6 +43,7 @@ export default {
     Notyet,
     Fortoday,
     PaymentInfo,
+    AcceptedList,
   },
   data() {
     return {
@@ -56,6 +62,7 @@ export default {
       },
       lastResult: false,
       locked: false,
+      acceptedList: [],
       labelForKeys: {
         "whenEnter": null,
         "whenSpace": null,
@@ -88,7 +95,7 @@ export default {
   },
   methods: {
     keyPushEmulation(ev){
-      alert(ev)
+      (this[ev.code] || (() => 0))()
     },
     focus(){
       this.$refs.inp.focus()
@@ -247,6 +254,10 @@ export default {
     },
     async markAsAccepted(data, params = {}){
       const {isError} = await this.$axios.$post(baseUrl + "/accept/" + data.id, params)
+      this.acceptedList.push(this.setting.user)
+      if(this.acceptedList.length > 20){
+        this.acceptedList.splice(20)
+      }
       this.lastResult = false
       this.init()
     },
@@ -324,5 +335,10 @@ export default {
 }
 .fade-enter, .fade-leave-to{
   opacity: 0;
+}
+.accepted-list{
+  position: absolute;
+  top: 0;
+  right: 0;
 }
 </style>

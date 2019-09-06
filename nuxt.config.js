@@ -1,6 +1,9 @@
 const serveStatic=require("serve-static")
 
 module.exports = {
+  server: {
+    host: '0.0.0.0'
+  },
   mode: 'spa',
   /*
   ** Headers of the page
