@@ -2,7 +2,7 @@ const serveStatic=require("serve-static")
 
 module.exports = {
   env: {
-    baseUrl: 'http://localhost:3000'
+    baseUrl: 'http://192.168.200.100:3000'
   },
   server: {
     host: '0.0.0.0'

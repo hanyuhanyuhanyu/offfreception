@@ -124,12 +124,12 @@ export default {
       //現生払え
     },
     Digit1(){
-      if(this.setting.user && !this.locked){
+      if(this.setting.user && !this.locked && this.setting.user.forToday){
         this.setting.user.attendFirstDay = !this.setting.user.attendFirstDay
       }
     },
     Digit2(){
-      if(this.setting.user && !this.locked){
+      if(this.setting.user && !this.locked && this.setting.user.forToday){
         this.setting.user.attendSecondDay = !this.setting.user.attendSecondDay
       }
     },
@@ -187,6 +187,7 @@ export default {
       this.$nextTick(() => this.focus())
     },
     async search(input){
+      input = input.replace(/[^0-9A-Za-z]/g, '_')
       const {data} = await axios.get("/fetch/" + input)
       if(!data){
         return false
@@ -255,7 +256,7 @@ export default {
     },
     async markAsAccepted(data, params = {}){
       const {isError} = await axios.post("/accept/" + data.id, params)
-      this.acceptedList.push(this.setting.user)
+      this.acceptedList.unshift(this.setting.user)
       if(this.acceptedList.length > 20){
         this.acceptedList.splice(20)
       }
